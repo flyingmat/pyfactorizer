@@ -68,6 +68,18 @@ def solve_x0_terms(inlst):
     out += float(current_term) if current_term else 0
     return out
 
+def divide_func(exps, div):    # uses polynomial long division
+    newexps = {}
+    for current_exp in range(max(exps)-max(div), -1, -1):
+        newexps[current_exp] = exps[max(exps)] / div[max(div)]
+        for exp, coeff in div.items():
+            m_coeff = exp + current_exp
+            if m_coeff not in exps:
+                exps[m_coeff] = 0
+            exps[m_coeff] -= (newexps[current_exp] * coeff)
+            if exps[m_coeff] == 0:
+                del exps[m_coeff]    # deletion required because of max() in the main loop that could return a coeff with value 0
+    return newexps if not exps else {}    # if there is a reminder, return an empty dict; could be changed to return reminder
 
 class frozendict_exps:
     def __init__(self):
@@ -91,7 +103,7 @@ class Function(frozendict_exps):
     def __init__(self, data):
         self.data = {}
         if type(data) == dict:
-            self.eqt = data
+            self.exps = data
         else:
             self.eqt = remove_spaces(data)
             self.eqt = fix_signs(self.eqt)
