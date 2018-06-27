@@ -13,6 +13,12 @@ def fix_signs(inlst):
         i += 1    # keep checking for other signs
     return inlst
 
+def fix_dict(indict):
+    if type(indict) == dict:
+        return frozenset(indict.items())
+    else:
+        return indict
+
 def get_coefficient(inlst, i):
     coeff = ''
     k = i - 1
@@ -80,6 +86,50 @@ def divide_func(exps, div):    # uses polynomial long division
             if exps[m_coeff] == 0:
                 del exps[m_coeff]    # deletion required because of max() in the main loop that could return a coeff with value 0
     return newexps if not exps else {}    # if there is a reminder, return an empty dict; could be changed to return reminder
+
+def x2terms(exps):
+    a = exps[2] if 2 in exps else 0
+    b = exps[1] if 1 in exps else 0
+    c = exps[0] if 0 in exps else 0
+    return a,b,c
+
+def delta_calc(a,b,c):
+    return b**2 - 4*a*c
+
+def pow_diff(poly):
+    out = ()
+    root1 = (poly[max(poly)]) ** (1.0 / max(poly))
+    root2 = abs(poly[0]) ** (1.0 / max(poly))
+    if root1.is_integer() and root2.is_integer():
+        root1, root2 = int(root1), int(root2)
+        if max(poly) % 2 == 0:
+            if poly[0] < 0:
+                out = (( { int(max(poly)/2):root1, 0:root2 }, 1 ), ( { int(max(poly)/2):root1, 0:-root2 }, 1 ))
+        else:
+            if poly[0] < 0:
+                out = ( { 1:root1, 0:-root2}, 1 )
+            else:
+                out = ( { 1:root1, 0:root2 }, 1 )
+    return out
+
+def factorize(poly_list, func):
+    poly = poly_list.pop(0)
+    tmexp = max(poly)
+    if poly[0] == 0:
+        poly = divide_func(poly, { min(poly):1, 0:0 })
+        func.add({ 1:1, 0:0 }, min(poly))
+        poly_list.append(poly)
+    elif len(poly) == 2 and poly[0]:
+        for p, e in pow_diff(poly):
+            for div_i in range(e):
+                poly = divide_func(poly, p)
+            func.add(p, e)
+        poly_list.append(poly)
+    #elif: other polynomials
+    if poly_list:
+        factorize(poly_list, func)
+    else:
+        func.add(poly, 1)
 
 class frozendict_exps:
     def __init__(self):
