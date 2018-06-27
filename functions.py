@@ -120,11 +120,13 @@ def factorize(poly_list, func):
         func.add({ 1:1, 0:0 }, min(poly))
         poly_list.append(poly)
     elif len(poly) == 2 and poly[0]:
-        for p, e in pow_diff(poly):
-            for div_i in range(e):
-                poly = divide_func(poly, p)
-            func.add(p, e)
-        poly_list.append(poly)
+        div_polys = pow_diff(poly)
+        if div_polys:
+            for p, e in div_polys:
+                for div_i in range(e):
+                    poly = divide_func(poly, p)
+                func.add(p, e)
+            poly_list.append(poly)
     #elif: other polynomials
     if poly_list:
         factorize(poly_list, func)
