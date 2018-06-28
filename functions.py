@@ -2,6 +2,12 @@ from math import floor
 
 remove_spaces = lambda inlst: [i for i in inlst if i != ' ']
 
+def sf2i(inp):
+    if float(inp).is_integer():
+        return str(int(inp))
+    else:
+        return str(inp)
+
 def fix_signs(inlst):
     i = 0
     while i < len(inlst):
@@ -89,11 +95,12 @@ def divide_func(exps, div):    # uses polynomial long division
             exps[m_coeff] -= (newexps[current_exp] * coeff)
             if exps[m_coeff] == 0:
                 del exps[m_coeff]    # deletion required because of max() in the main loop that could return a coeff with value 0
+    if 0 not in newexps:
+        newexps[0] = 0
     return newexps if not exps or not exps[0] else {}    # if there is a reminder, return an empty dict; could be changed to return reminder
 
 def n_factors(n):
     if type(n) == float and not n.is_integer():
-        yield (n, 1)
         raise StopIteration
     else:
         n = int(n)
@@ -119,8 +126,12 @@ def delta_calc(a,b,c):
 
 def pow_diff(poly):
     out = ()
-    root1 = (poly[max(poly)]) ** (1.0 / max(poly))
-    root2 = abs(poly[0]) ** (1.0 / max(poly))
+    if max(poly) % 2 == 0:
+        root1 = poly[max(poly)] ** (1.0 / 2)
+        root2 = abs(poly[0]) ** (1.0 / 2)
+    else:
+        root1 = (poly[max(poly)]) ** (1.0 / max(poly))
+        root2 = abs(poly[0]) ** (1.0 / max(poly))
     if root1.is_integer() and root2.is_integer():
         root1, root2 = int(root1), int(root2)
         if max(poly) % 2 == 0:
@@ -144,54 +155,92 @@ def binomial_mult(poly, expsort):
                 out = (( p_div1, 1 ), ( p_div2, 1 ))
     return out
 
-def factorize(poly_list, func):
-    poly = poly_list.pop(0)
+def factorize(poly_stack, func):
+    poly = poly_stack.pop()
     tmexp = max(poly)
     div_polys = []
-    if tmexp and poly[0] == 0:
+    common_factor = 1
+    for (i, _) in n_factors(min([abs(v) for v in poly.values() if v != 0])):    # if common factor in poly, divide e.g. 2x^2+4 -> 2(x^2+2)
+        checkmult = set()                                 # check performed on every iteration because of coeffs changing with division
+        for coeff in poly.values():
+            checkmult.add(coeff % i)
+            if coeff % i != 0:
+                break
+        if len(checkmult) == 1 and 0 in checkmult:
+            common_factor = i
+            break
+    if common_factor != 1:
+        '''
+        poly = divide_func(poly, { 0:common_factor })
+        func.add({ 0:common_factor }, 1)
+        poly_stack.append(poly)
+        '''
+        div_polys = [ ({ 0:common_factor }, 1) ]
+    elif tmexp and poly[0] == 0:
+        '''
         func.add({ 1:1, 0:0 }, min([e if e > 0 else tmexp for e in poly]))
         poly = divide_func(poly, { min([e if e > 0 else tmexp for e in poly]):1 })
-        poly_list.append(poly)
+        poly_stack.append(poly)
+        '''
+        div_polys = [ ({ 1:1, 0:0 }, min([e if e > 0 else tmexp for e in poly])) ]
     elif len(poly) == 2 and poly[0]:    # x^2 - 1 -> (x + 1)(x - 1), x^3 - 1, x^3 + 1, etc.
         div_polys = pow_diff(poly)
     elif len(poly) == 3 and poly[0]:    # x^2 + 2x + 1 -> (x + 1)^2, 3x^2 + 7x + 2 -> (3x + 1)(x + 2), etc. max exp can be > 2
         expsort = sorted(poly)[::-1]
         if expsort[0] % 2 == 0 and expsort[0]-expsort[1] == expsort[1]-expsort[2]:
             div_polys = binomial_mult(poly, expsort)
+    #elif: other polynomials
     for p, e in div_polys:
         for div_i in range(e):
             poly = divide_func(poly, p)
             if max(p) > 2 or (max(p) == 2 and p[0] and delta_calc(*x2terms(p)) >= 0):
-                poly_list.append(p)
+                poly_stack.append(p)
             else:
                 func.add(p, 1)
-    #elif: other polynomials
-    if poly_list:
-        factorize(poly_list, func)
-    elif poly != {0:1}:
+    if div_polys and (max(poly) > 2 or (max(poly) == 2 and poly[0] and delta_calc(*x2terms(poly)) >= 0)):
+        poly_stack.append(poly)
+    else:
         func.add(poly, 1)
+    if poly_stack:
+        factorize(poly_stack, func)
 
-class frozendict_exps:
-    def __init__(self):
-        self.data = {}
-    def __repr__(self):
-        return repr(self.data)
-    def add(self, indict, exp):
-        self.indict = fix_dict(indict)
-        if self.indict in self.data:
-            self.data[self.indict] += exp
+def polyformat(polys, x0t):
+    out = ['','']
+    brackets = False
+    if len(polys) > 1 or x0t != 1:
+        brackets = True
+    out[0] += '-' if x0t < 0 else ''
+    out[0] += sf2i(x0t) if x0t not in (1,-1) or len(polys) == 0 else ''
+    for poly, exp in polys.items():
+        poly = dict(poly)
+        if len(poly) == 2 and not poly[0]:
+            out[1] = 'x'
+            if exp > 1:
+                out[1] += '^' + str(exp)
         else:
-            self.data[self.indict] = exp
-    def remove(self, indict, exp):
-        self.indict = fix_dict(indict)
-        del self.data[self.indict]
-    def edit(self, indict, newdict, exp):
-        self.remove(indict)
-        self.add(newdict, exp)
+            current_poly = ''
+            if exp > 1:
+                brackets = True
+            expsort = sorted(poly)[::-1]
+            for e in expsort:
+                current_poly += '- ' if poly[e] < 0 else '+ ' if poly[e] > 0 else ''
+                if e != 0:
+                    current_poly += sf2i(abs(poly[e])) if poly[e] not in (1,-1) else ''
+                    current_poly += 'x'
+                    current_poly += '^' + sf2i(e) + ' ' if e != 1 else ' '
+                else:
+                    current_poly += sf2i(abs(poly[e])) if poly[e] else ''
+                if current_poly[0] == '+':
+                    current_poly = current_poly[2:]
+            current_poly = '(' + current_poly + ')' if brackets else current_poly
+            current_poly += '^' + sf2i(exp) if exp != 1 else ''
+            out.append(current_poly)
+    return ''.join(out)
 
-class Function(frozendict_exps):
+class Function():
     def __init__(self, data):
         self.data = {}
+        self.x0t = 1
         if type(data) == dict:
             self.exps = data
         else:
@@ -202,3 +251,16 @@ class Function(frozendict_exps):
         self.out = ""
     def __repr__(self):
         return repr(self.data)
+    def add(self, indict, exp):
+        if len(dict(indict)) == 1:
+            self.x0t *= ((dict(indict))[0] ** exp)    # number-only terms (x^0) are managed separately
+        else:
+            self.indict = fix_dict(indict)
+            if self.indict in self.data:
+                self.data[self.indict] += exp
+            else:
+                self.data[self.indict] = exp
+    def factorize(self):
+        factorize([self.exps], self)
+        #print(self.data)
+        return polyformat(self.data, self.x0t)
