@@ -127,17 +127,17 @@ def delta_calc(a,b,c):
 def pow_diff(poly):
     out = ()
     if max(poly) % 2 == 0:
-        root1 = poly[max(poly)] ** (1.0 / 2)
-        root2 = abs(poly[0]) ** (1.0 / 2)
+        root_exp = (1.0 / 2)
     else:
-        root1 = (poly[max(poly)]) ** (1.0 / max(poly))
-        root2 = abs(poly[0]) ** (1.0 / max(poly))
+        root_exp = (1.0 / max(poly))
+    root1 = (abs(poly[max(poly)]) ** root_exp) * (-1 if poly[max(poly)] < 0 else 1)
+    root2 = (abs(poly[0]) ** root_exp) * (-1 if poly[0] < 0 else 1)
     if root1.is_integer() and root2.is_integer():
         root1, root2 = int(root1), int(root2)
         if max(poly) % 2 == 0:
-            if poly[0] < 0:
-                xm, x0 = poly[max(poly)]**(1.0/2), abs(poly[0])**(1.0/2)
-                out = (( { int(max(poly)/2):xm, 0:x0 }, 1 ), ( { int(max(poly)/2):xm, 0:-x0 }, 1 ))
+            if poly[0]*poly[max(poly)] < 0:
+                xm, x0 = root1, root2
+                out = (( { int(max(poly)/2):xm, 0:x0 }, 1 ), ( { int(max(poly)/2):(xm if xm > 0 else -xm), 0:(x0 if xm < 0 else -x0) }, 1 ))
         else:
             if poly[0] < 0:
                 out = [( { 1:root1, 0:-root2}, 1 )]
@@ -230,8 +230,10 @@ def polyformat(polys, x0t):
                     current_poly += '^' + sf2i(e) + ' ' if e != 1 else ' '
                 else:
                     current_poly += sf2i(abs(poly[e])) if poly[e] else ''
-                if current_poly[0] == '+':
-                    current_poly = current_poly[2:]
+            if current_poly[0] == '+':
+                current_poly = current_poly[2:]
+            elif current_poly[0] == '-':
+                current_poly = '-' + current_poly[2:]
             current_poly = '(' + current_poly + ')' if brackets else current_poly
             current_poly += '^' + sf2i(exp) if exp != 1 else ''
             out.append(current_poly)
