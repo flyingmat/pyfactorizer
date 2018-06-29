@@ -249,7 +249,8 @@ class Function():
             self.eqt = remove_spaces(data)
             self.eqt = fix_signs(self.eqt)
             self.exps = convert(self.eqt)    # self.eqt is referenced and edited directly by convert()
-            self.exps[0] = solve_x0_terms(self.eqt)    # x-terms have already been removed from self.eqt
+            if 0 not in self.exps:    # 0 may already be in exps because of x^0 terms
+                self.exps[0] = solve_x0_terms(self.eqt)    # x-terms have already been removed from self.eqt
         self.out = ""
     def __repr__(self):
         return repr(self.data)
@@ -263,6 +264,9 @@ class Function():
             else:
                 self.data[self.indict] = exp
     def factorize(self):
-        factorize([self.exps], self)
-        #print(self.data)
-        return polyformat(self.data, self.x0t)
+        if set(self.exps.values()) != set([0]):
+            factorize([self.exps], self)
+            #print(self.data)
+            return polyformat(self.data, self.x0t)
+        else:
+            return '0'
