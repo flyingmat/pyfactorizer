@@ -160,14 +160,13 @@ def factorize(poly_stack, func):
     tmexp = max(poly)
     div_polys = []
     common_factor = 1
+    checknegative = set([c < 0 for c in poly.values()])
     for (i, _) in n_factors(min([abs(v) for v in poly.values() if v != 0])):    # if common factor in poly, divide e.g. 2x^2+4 -> 2(x^2+2)
         checkmult = set()                                 # check performed on every iteration because of coeffs changing with division
         for coeff in poly.values():
             checkmult.add(coeff % i)
-            if coeff % i != 0:
-                break
         if len(checkmult) == 1 and 0 in checkmult:
-            common_factor = i
+            common_factor = i if checknegative != set([True]) else -i
             break
     if common_factor != 1:
         '''
@@ -183,7 +182,7 @@ def factorize(poly_stack, func):
         poly_stack.append(poly)
         '''
         div_polys = [ ({ 1:1, 0:0 }, min([e if e > 0 else tmexp for e in poly])) ]
-    elif len(poly) == 2 and poly[0]:    # x^2 - 1 -> (x + 1)(x - 1), x^3 - 1, x^3 + 1, etc.
+    elif len(poly) == 2 and max(poly) > 1 and poly[0]:    # x^2 - 1 -> (x + 1)(x - 1), x^3 - 1, x^3 + 1, etc.
         div_polys = pow_diff(poly)
     elif len(poly) == 3 and poly[0]:    # x^2 + 2x + 1 -> (x + 1)^2, 3x^2 + 7x + 2 -> (3x + 1)(x + 2), etc. max exp can be > 2
         expsort = sorted(poly)[::-1]
@@ -209,8 +208,7 @@ def polyformat(polys, x0t):
     brackets = False
     if len(polys) > 1 or x0t != 1:
         brackets = True
-    out[0] += '-' if x0t < 0 else ''
-    out[0] += sf2i(x0t) if x0t not in (1,-1) or len(polys) == 0 else ''
+    out[0] += sf2i(x0t) if x0t not in (1,-1) or len(polys) == 0 else '-' if x0t == -1 else ''
     for poly, exp in polys.items():
         poly = dict(poly)
         if len(poly) == 2 and not poly[0]:
@@ -232,7 +230,7 @@ def polyformat(polys, x0t):
                     current_poly += sf2i(abs(poly[e])) if poly[e] else ''
             if current_poly[0] == '+':
                 current_poly = current_poly[2:]
-            elif current_poly[0] == '-':
+            elif current_poly[0] == '-' and brackets:
                 current_poly = '-' + current_poly[2:]
             current_poly = '(' + current_poly + ')' if brackets else current_poly
             current_poly += '^' + sf2i(exp) if exp != 1 else ''
