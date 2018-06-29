@@ -127,9 +127,9 @@ def delta_calc(a,b,c):
 def pow_diff(poly):
     out = ()
     if max(poly) % 2 == 0:
-        root_exp = (1.0/2)
+        root_exp = (1.0 / 2)
     else:
-        root_exp = max(poly)
+        root_exp = (1.0 / max(poly))
     root1 = (abs(poly[max(poly)]) ** root_exp) * (-1 if poly[max(poly)] < 0 else 1)
     root2 = (abs(poly[0]) ** root_exp) * (-1 if poly[0] < 0 else 1)
     if root1.is_integer() and root2.is_integer():
@@ -138,7 +138,6 @@ def pow_diff(poly):
             if poly[0]*poly[max(poly)] < 0:
                 xm, x0 = root1, root2
                 out = (( { int(max(poly)/2):xm, 0:x0 }, 1 ), ( { int(max(poly)/2):(xm if xm > 0 else -xm), 0:(x0 if xm < 0 else -x0) }, 1 ))
-                print(out)
         else:
             if poly[0] < 0:
                 out = [( { 1:root1, 0:-root2}, 1 )]
