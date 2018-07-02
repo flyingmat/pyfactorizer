@@ -139,13 +139,10 @@ def pow_diff(poly):
                 xm, x0 = root1, root2
                 out = (( { int(max(poly)/2):xm, 0:x0 }, 1 ), ( { int(max(poly)/2):(xm if xm > 0 else -xm), 0:(x0 if xm < 0 else -x0) }, 1 ))
         else:
-            if poly[0] < 0:
-                out = [( { 1:root1, 0:-root2}, 1 )]
-            else:
-                out = [( { 1:root1, 0:root2 }, 1 )]
+            out = [( { 1:root1, 0:root2}, 1 )]
     return out
 
-def binomial_mult(poly, expsort):
+def binomial_mult_3(poly, expsort):
     out = ()
     for x0t1, x0t2 in n_factors(poly[0]):
         for xmt1, xmt2 in n_factors(poly[expsort[0]]):
@@ -169,37 +166,30 @@ def factorize(poly_stack, func):
             common_factor = i if checknegative != set([True]) else -i
             break
     if common_factor != 1:
-        '''
-        poly = divide_func(poly, { 0:common_factor })
-        func.add({ 0:common_factor }, 1)
-        poly_stack.append(poly)
-        '''
         div_polys = [ ({ 0:common_factor }, 1) ]
-    elif tmexp and poly[0] == 0:
-        '''
-        func.add({ 1:1, 0:0 }, min([e if e > 0 else tmexp for e in poly]))
-        poly = divide_func(poly, { min([e if e > 0 else tmexp for e in poly]):1 })
-        poly_stack.append(poly)
-        '''
+    elif len(poly) > 2 and tmexp and poly[0] == 0:    # x^5 + x^3 -> x^3(x^2 + 1)
         div_polys = [ ({ 1:1, 0:0 }, min([e if e > 0 else tmexp for e in poly])) ]
     elif len(poly) == 2 and max(poly) > 1 and poly[0]:    # x^2 - 1 -> (x + 1)(x - 1), x^3 - 1, x^3 + 1, etc.
         div_polys = pow_diff(poly)
     elif len(poly) == 3 and poly[0]:    # x^2 + 2x + 1 -> (x + 1)^2, 3x^2 + 7x + 2 -> (3x + 1)(x + 2), etc. max exp can be > 2
         expsort = sorted(poly)[::-1]
         if expsort[0] % 2 == 0 and expsort[0]-expsort[1] == expsort[1]-expsort[2]:
-            div_polys = binomial_mult(poly, expsort)
+            div_polys = binomial_mult_3(poly, expsort)
     #elif: other polynomials
     for p, e in div_polys:
         for div_i in range(e):
             poly = divide_func(poly, p)
-            if max(p) > 2 or (max(p) == 2 and p[0] and delta_calc(*x2terms(p)) >= 0):
+            if (max(p) > 2) or (max(p) == 2 and p[0] and delta_calc(*x2terms(p)) >= 0):
                 poly_stack.append(p)
             else:
                 func.add(p, 1)
-    if div_polys and (max(poly) > 2 or (max(poly) == 2 and poly[0] and delta_calc(*x2terms(poly)) >= 0)):
+    if div_polys and ((max(poly) > 2) or (max(poly) == 2 and poly[0] and delta_calc(*x2terms(poly)) >= 0)):
         poly_stack.append(poly)
     else:
-        func.add(poly, 1)
+        if len(poly) == 2 and not poly[0]:    # fix for ax^2 -> x^2 divided by a -> poly = {2:1,0:0}:1, should be {1:1,0:0}:2
+            func.add({ 1:1, 0:0 }, max(poly))
+        else:
+            func.add(poly, 1)
     if poly_stack:
         factorize(poly_stack, func)
 
@@ -248,7 +238,8 @@ class Function():
             self.eqt = fix_signs(self.eqt)
             self.exps = convert(self.eqt)    # self.eqt is referenced and edited directly by convert()
             if 0 not in self.exps:    # 0 may already be in exps because of x^0 terms
-                self.exps[0] = solve_x0_terms(self.eqt)    # x-terms have already been removed from self.eqt
+                self.exps[0] = 0
+            self.exps[0] += solve_x0_terms(self.eqt)    # x-terms have already been removed from self.eqt
         self.out = ""
     def __repr__(self):
         return repr(self.data)
