@@ -152,12 +152,57 @@ def binomial_mult_3(poly, expsort):
                 out = (( p_div1, 1 ), ( p_div2, 1 ))
     return out
 
+def binomial_pow3(poly, expsort):
+    out = ()
+    if expsort[0] % 3 == 0:
+        root1 = (abs(poly[expsort[0]]) ** (1.0/3)) * (-1 if poly[expsort[0]] < 0 else 1)
+        root2 = (abs(poly[0]) ** (1.0/3)) * (-1 if poly[0] < 0 else 1)
+        if root1.is_integer() and root2.is_integer():
+            if poly[expsort[1]] == 3*(root1**2)*root2 and poly[expsort[2]] == 3*(root2**2)*root1:
+                out = [({ expsort[2]:root1, 0:root2 }, 3)]
+    return out
+
+def binomial_mult_4(poly, expsort):
+    out = ()
+    if poly[expsort[0]] / poly[expsort[2]] == poly[expsort[1]] / poly[expsort[3]]:
+        cfs = [poly[e] for e in expsort]
+        for (n3, _) in n_factors( max(abs(cfs[0]), abs(cfs[1])) - min(abs(cfs[0]), abs(cfs[1])) ):
+            if 0 == cfs[0] % n3 == cfs[1] % n3:
+                n1 = int(cfs[0]/n3)
+                n2 = int(cfs[1]/n3)
+                if cfs[3] % n2 == 0:
+                    n4 = int(cfs[3]/n2)
+                    out = [({ min(expsort[1],expsort[2]):n1, 0:n2 }, 1), ({ max(expsort[1],expsort[2]):n3, 0:n4 }, 1)]
+                    break
+    return out
+
+def bf_int_coordinates(exps):
+    out_cord = set()
+    for i in range(2,101):
+        k = 1/i
+        if check_fact(exps,k):
+            yield k
+        if check_fact(exps,-k):
+            yield -k
+    for i in range(1,1001):
+        if check_fact(exps,i):
+            yield i
+        if check_fact(exps,-i):
+            yield -i
+
+def check_fact(exps,fact):
+    out = 0
+    for exp in exps:
+        out += exps[exp] * (fact**exp)
+    return round(out,15) == 0
+
 def factorize(poly_stack, func):
     poly = poly_stack.pop()
     tmexp = max(poly)
     div_polys = []
     common_factor = 1
     checknegative = set([c < 0 for c in poly.values()])
+    # factorizing checks
     for (i, _) in n_factors(min([abs(v) for v in poly.values() if v != 0])):    # if common factor in poly, divide e.g. 2x^2+4 -> 2(x^2+2)
         checkmult = set()                                 # check performed on every iteration because of coeffs changing with division
         for coeff in poly.values():
@@ -175,7 +220,21 @@ def factorize(poly_stack, func):
         expsort = sorted(poly)[::-1]
         if expsort[0] % 2 == 0 and expsort[0]-expsort[1] == expsort[1]-expsort[2]:
             div_polys = binomial_mult_3(poly, expsort)
-    #elif: other polynomials
+    elif len(poly) == 4 and poly[0]:
+        expsort = sorted(poly)[::-1]
+        if expsort[0]-expsort[1] == expsort[1]-expsort[2] == expsort[2]-expsort[3]:
+            div_polys = binomial_pow3(poly, expsort)
+        if not div_polys:    # 6x^6 + 4x^4 + 15x^2 + 10 would trigger the first check but not the second when using ELIF (one doesn't exlude the other)
+            if expsort[0]-expsort[2] == expsort[1]-expsort[3]:
+                div_polys = binomial_mult_4(poly,expsort)
+    if not div_polys and tmexp > 2:
+        # bruteforce
+        div_count = tmexp
+        for xv in bf_int_coordinates(poly):
+            div_polys.append(({ 1:1, 0:-xv }, 1))
+            div_count -= 1
+            if div_count == 0:
+                break
     for p, e in div_polys:
         for div_i in range(e):
             poly = divide_func(poly, p)
